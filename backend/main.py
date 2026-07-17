@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from function import get_temperature_recommendation
-from function import study_score
+from sqlalchemy import asc, desc
+
 from database.database import SessionLocal
 from database.models import Reading
 
@@ -22,37 +22,29 @@ def root():
 
 
 @app.get("/api/readings")
-def get_readings():
-
+def get_readings(sort: str = "temp_desc"):
     db = SessionLocal()
 
-    readings = db.query(Reading).all()
-    db.execute("""CREATE TABLE NU-Atrium(
-               id integer,
-               place text,
-               temperature float,
-               brightness text,
-               noise text
-               )
-               """)
-    result = []
+    query = db.query(Reading)
 
-    for reading in readings:
-        result.append(
-            {
-                "id": reading.id,
-                "place": reading.place,
-                "temperature": reading.temperature,
-                "brightness": reading.brightness,
-                "noise": reading.noise,
-                "measured_at": reading.measured_at,
-            }
-        )
+    if sort == "temp_desc":
+        query = query.order_by(desc(Reading.temperature))
+    elif sort == "temp_asc":
+        query = query.order_by(asc(Reading.temperature))
 
-    
-    db.commit()
+    readings = query.all()
+
+    result = [
+        {
+            "id": r.id,
+            "place": r.place,
+            "temperature": r.temperature,
+            "brightness": r.brightness,
+            "noise": r.noise,
+            "measured_at": r.measured_at,
+        }
+        for r in readings
+    ]
 
     db.close()
-     
-
     return result
